@@ -12,8 +12,13 @@
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+//
+// The grader runs this program twice into the same /output and the copy below
+// preserves the repository's read-only modes, so a second copy into the previous
+// tree fails EACCES. Clear the previous output first and make the fresh copy
+// writable, so every run behaves like the first.
 
-import { cpSync, existsSync, mkdirSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
@@ -21,10 +26,30 @@ import { buildDossier } from './vendor/makefun-game.ts';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
+// A previous run's output goes first (force: true is a no-op when it is absent).
+for (const name of ['game', 'screenshots', 'dossier.json']) {
+  rmSync(join(out, name), { recursive: true, force: true });
+}
 mkdirSync(out, { recursive: true });
 cpSync(join(here, 'game'), join(out, 'game'), { recursive: true });
 mkdirSync(join(out, 'screenshots'), { recursive: true });
 if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
+
+// The copy keeps the repository's modes (read-only there), so make the fresh
+// tree writable by its owner: the next run clears it the same way.
+const makeWritable = (dir: string): void => {
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) {
+      chmodSync(p, 0o755);
+      makeWritable(p);
+    } else if (e.isFile()) {
+      chmodSync(p, 0o644);
+    }
+  }
+};
+makeWritable(join(out, 'game'));
+makeWritable(join(out, 'screenshots'));
 
 // The scorer's own caps (reference/gate.json): only text_max_bytes shapes the bytes; the others refuse an entry the
 // scorer would refuse (more than 4 screenshots or one over 256 KiB; more than 993 files in game/ or 48 MiB of game
