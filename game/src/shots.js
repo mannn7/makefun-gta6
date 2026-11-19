@@ -1,3 +1,8 @@
+// V2 (restage): all four scenes now play at dusk against the pastel + neon
+// beach strip — the chase at dusk with neon behind, the drive down the beach
+// strip, the on-foot walk past the lifeguard tower and hotels, and the mission
+// beacon at sunset. The street scene walks north-east so the frame holds the
+// beach-strip buildings and a lifeguard tower, not just empty sand.
 // Screenshot scenes: each one plays the REAL game forward from a fresh world with
 // a fixed seed and a simple autopilot (waypoint driving, sidewalk walking), so the
 // frame is what a short game really looks like and the same seed always gives the
@@ -190,30 +195,35 @@ const SCENES = {
     g.camera.lookAt(playerCar.x, 1, playerCar.z + 6);
     g.cameraPos.copy(g.camera.position);
   },
-  // Driving through the city: traffic ahead, pedestrians on the sidewalks.
-  // Marco drives in the eastbound lane; three oncoming cars in the westbound
-  // lane pass him (6.4 m apart, no sideswipe) so the street reads as alive.
+  // Driving down the beach strip at dusk: pastel hotels and neon on the left,
+  // palms, sand and the turquoise sea on the right. Marco drives in the
+  // eastbound lane; three oncoming cars in the westbound lane pass him (6.4 m
+  // apart, no sideswipe) so the street reads as alive.
   drive(g, input) {
-    putInCar(g, -180, -3.2, Math.PI / 2, 0x2e6fc2);
-    clearRoute(g, true, 0, -180, 180);
+    putInCar(g, -180, 228.8, Math.PI / 2, 0x2e6fc2);
+    clearRoute(g, true, 232, -180, 180);
     for (const x of [90, 120, 150, 180]) {
-      const car = makeCar(g, x, 3.2, -Math.PI / 2, g.rng.pick([0xc23b2e, 0xe8c832, 0x3aa655, 0xe8e8e8]), 'traffic');
-      car.route = { alongX: true, line: 0, along: x, dir: -1, lane: 3.2 };
+      const car = makeCar(g, x, 235.2, -Math.PI / 2, g.rng.pick([0xc23b2e, 0xe8c832, 0x3aa655, 0xe8e8e8]), 'traffic');
+      car.route = { alongX: true, line: 232, along: x, dir: -1, lane: 235.2 };
       car.speed = 8;
       car.cruise = 8;
       car.noTurn = true;
     }
-    const route = [{ x: 180, z: -3.2 }];
+    const route = [{ x: 180, z: 228.8 }];
     playForward(g, input, 10, () => drivePilot(g, route));
   },
-  // On foot in the city: Marco walking diagonally across the central plaza,
-  // the fountain ahead of him, planters and shops around.
+  // On foot on the beachfront strip: Marco walking east along the Ocean Drive
+  // road at dusk, the pastel hotel strip with neon on his left, palms and the
+  // sand and sea on his right, a lifeguard tower down the beach. The camera
+  // looks east-north-east so the strip fills the frame instead of empty sand.
+  // The road is cleared of parked cars first, so Marco never clips through one.
   street(g, input) {
-    g.player.x = 10;
-    g.player.z = 45;
+    g.player.x = -70;
+    g.player.z = 231;
     g.player.heading = Math.PI / 2;
-    g.cameraYaw = -Math.PI / 2;
-    const route = [{ x: 45, z: 12 }];
+    g.cameraYaw = -1.5;
+    clearRoute(g, true, 232, -80, 40);
+    const route = [{ x: 20, z: 229 }];
     playForward(g, input, 4, () => walkPilot(g, route));
   },
   // A mission in progress: the M3 cash-drop beacon ahead, Marco driving to it.

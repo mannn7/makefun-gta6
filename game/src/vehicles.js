@@ -1,3 +1,6 @@
+// V2: the stolen-car feed text is "Car theft" — the series name is gone from
+// the HUD. Car meshes, arcade driving, collision and steal logic are otherwise
+// unchanged from v1.
 // Cars: a boxy mesh factory (body, cabin, wheels, headlights), parked cars, and the
 // player's arcade driving — accelerate, brake, reverse, steer that bites harder
 // the faster you go, handbrake drift, and simple circle-vs-building collision so a
@@ -186,7 +189,7 @@ export function updatePlayerCar(g, dt, input) {
 export function enterCar(g, car) {
   if (car.kind === 'parked' || car.kind === 'traffic') {
     if (car.kind === 'parked') {
-      g.police.addWanted(1, 'Grand theft auto');
+      g.police.addWanted(1, 'Car theft');
       g.hud.feed('You stole a car! The cops are onto you.');
     }
     car.kind = 'player';

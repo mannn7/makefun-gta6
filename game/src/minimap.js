@@ -1,10 +1,15 @@
-// The minimap: a small 2D canvas in the HUD corner. Roads as dark lines on a
-// pale map, the sea along the south edge, the player as a white arrow, the mission
-// marker as a yellow diamond, police as flashing blue dots and traffic as grey
-// dots. North is up; the map is the whole city at a glance.
+// V2 (GTA 6 map): the minimap is a light plate (cream city, sand, turquoise
+// sea) with a pink route line to the target, and it tints red-pink while the
+// police are searching — like the real GTA 6 rounded-rectangle light map.
+// The minimap: a small 2D canvas in the HUD corner, drawn on a light plate like
+// the real GTA 6 map. Roads as grey lines on cream, the sea along the south edge,
+// the route to the target as a pink line, the player as a white arrow, the
+// mission marker as a yellow diamond, police as flashing dots and traffic as
+// grey dots. While the police are searching (wanted, but no cruiser in sight)
+// the whole map tints red-pink. North is up; the map is the whole city at a glance.
 import { CITY_HALF, PITCH, GRID, WATER_Z, BEACH_Z } from './config.js';
 
-const SIZE = 220;
+const SIZE = 200;
 const HALF = 300; // metres shown each way from the centre
 
 function toMap(v) {
@@ -15,19 +20,18 @@ export function drawMinimap(g) {
   const canvas = g.minimapCanvas;
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
-  // Sand and sea.
-  ctx.fillStyle = '#d8c9a3';
+  // Light plate: cream city, sand, turquoise sea.
+  ctx.fillStyle = '#f2ead8';
   ctx.fillRect(0, 0, SIZE, SIZE);
-  ctx.fillStyle = '#e8d49a';
+  ctx.fillStyle = '#f0dca8';
   ctx.fillRect(0, toMap(BEACH_Z), SIZE, toMap(WATER_Z) - toMap(BEACH_Z));
-  ctx.fillStyle = '#2e9bb5';
+  ctx.fillStyle = '#35d0c0';
   ctx.fillRect(0, toMap(WATER_Z), SIZE, SIZE - toMap(WATER_Z));
-  // City base.
-  ctx.fillStyle = '#c9bda1';
+  ctx.fillStyle = '#e8dfc8';
   ctx.fillRect(0, 0, SIZE, toMap(CITY_HALF));
   // Roads.
-  ctx.strokeStyle = '#3a3d42';
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#8a8f96';
+  ctx.lineWidth = 2.5;
   for (let k = -GRID; k <= GRID; k += 1) {
     const c = toMap(k * PITCH);
     ctx.beginPath();
@@ -39,8 +43,31 @@ export function drawMinimap(g) {
     ctx.lineTo(toMap(CITY_HALF), c);
     ctx.stroke();
   }
-  // Mission marker: a yellow diamond.
   const marker = g.missions.marker();
+  const px = toMap(g.player.x);
+  const py = toMap(g.player.z);
+  // The route: a pink line from the player to the target, bent along the
+  // streets (east-west first, then north-south) the way a sat-nav would draw it.
+  if (marker) {
+    const mx = toMap(marker.x);
+    const my = toMap(marker.z);
+    ctx.strokeStyle = '#ff4f9a';
+    ctx.lineWidth = 4;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(mx, py);
+    ctx.lineTo(mx, my);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(mx, py);
+    ctx.lineTo(mx, my);
+    ctx.stroke();
+  }
+  // Mission marker: a yellow diamond.
   if (marker) {
     const mx = toMap(marker.x);
     const my = toMap(marker.z);
@@ -71,8 +98,6 @@ export function drawMinimap(g) {
     ctx.fill();
   }
   // Player: a white arrow pointing where he faces.
-  const px = toMap(g.player.x);
-  const py = toMap(g.player.z);
   ctx.save();
   ctx.translate(px, py);
   ctx.rotate(g.player.heading);
@@ -88,4 +113,9 @@ export function drawMinimap(g) {
   ctx.fill();
   ctx.stroke();
   ctx.restore();
+  // While the police are searching, the whole map tints red-pink.
+  if (g.wanted > 0 && g.police.searching) {
+    ctx.fillStyle = 'rgba(255,60,90,0.16)';
+    ctx.fillRect(0, 0, SIZE, SIZE);
+  }
 }

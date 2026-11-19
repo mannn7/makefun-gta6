@@ -1,3 +1,6 @@
+// V2: the wanted scale is six stars (MAX_WANTED = 6) with red evidence icons
+// in the HUD, and the minimap tints red-pink while the police are searching.
+// Chase, ram and busted logic are unchanged.
 // The wanted system and the Solara Bay police. Stars rise when the player steals,
 // hits a pedestrian or shoots; police cars spawn to match the level and chase the
 // player down, ramming the car or cornering the player on foot. Out of sight long
@@ -18,6 +21,7 @@ export function createPolice(g) {
     decayTimer: 0,
     bustedTimer: 0,
     sirenOn: false,
+    searching: false, // wanted, but no cruiser in sight: the map tints red-pink
     addWanted(n, reason) {
       if (g.wanted >= MAX_WANTED) return;
       g.wanted = Math.min(MAX_WANTED, g.wanted + n);
@@ -73,6 +77,7 @@ export function updatePolice(g, dt) {
     if (d < nearest) nearest = d;
   }
   police.sirenOn = g.wanted > 0 && nearest < 120;
+  police.searching = g.wanted > 0 && nearest > 90;
   g.audio.siren(police.sirenOn, dt);
 
   if (g.wanted > 0 && nearest > 90) {

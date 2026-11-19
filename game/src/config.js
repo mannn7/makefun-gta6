@@ -1,3 +1,7 @@
+// V2 (dusk pass): golden hour is now the default — the clock starts at 18:45
+// and PALETTE is a dusk palette (warm orange sun, pink-purple sky, pastel Art
+// Deco beach facades, turquoise water), so the city glows instead of glaring.
+// MAX_WANTED is 6, matching the real GTA 6 wanted scale.
 // Solara Bay: tuning, sizes and palette. One grid, one truth: every system reads the
 // street layout from here, so the city, the traffic, the pedestrians and the missions
 // all agree about where the roads are.
@@ -30,24 +34,28 @@ export const CAR_LENGTH = 4.4;
 export const CAR_WIDTH = 2.0;
 
 // Wanted
-export const MAX_WANTED = 5;
+export const MAX_WANTED = 6;
 
-// Clock: the game clock starts at 10:30 and runs one game minute every 2 real seconds.
-export const CLOCK_START_MINUTES = 10 * 60 + 30;
+// Clock: the game clock starts at 18:45 — golden hour, the sun low over the sea —
+// and runs one game minute every 2 real seconds.
+export const CLOCK_START_MINUTES = 18 * 60 + 45;
 export const CLOCK_RATE = 0.5; // game minutes per real second
 
-// Sun-soaked palette: warm plaster, terracotta, teal and sand, under a hot blue sky.
+// Dusk palette: golden-hour sun, a pink-purple sky, pastel Art Deco on the beach
+// strip, neon after dark, turquoise water. The city glows instead of glaring.
 export const PALETTE = {
-  sky: 0x8ec9e8,
-  fog: 0xd8e8ee,
-  sun: 0xffe2b0,
-  hemiSky: 0xbfd9ff,
-  hemiGround: 0x9a8a68,
-  asphalt: 0x3a3d42,
-  sidewalk: 0xcfc4ae,
-  sand: 0xe8d49a,
-  water: 0x2e9bb5,
-  building: [0xf2e3c6, 0xe8b48a, 0x9fc4c0, 0xd97b6c, 0xf7ead2, 0x8fb8a8, 0xe6c9a8, 0xc9a06a],
+  sky: 0xff9a5c,
+  fog: 0xe8a06a,
+  sun: 0xffb36b,
+  hemiSky: 0xff9a7a,
+  hemiGround: 0x4a3f5e,
+  asphalt: 0x2e3138,
+  sidewalk: 0xd8c9a8,
+  sand: 0xf2ddab,
+  water: 0x35d0c0,
+  building: [0xf7a8c4, 0x7fd1c0, 0xff8f6b, 0xa8e6b0, 0xfff1d6, 0xc9a8e8, 0xffc98a, 0x9fd8ef],
+  // Low-rise pastel facades for the beach strip (Art Deco hotels and bars).
+  beach: [0xf7a8c4, 0x7fd1c0, 0xff8f6b, 0xa8e6b0, 0xfff1d6, 0xffc98a, 0xf2b8d8, 0x8ad8c8],
   car: [0xc23b2e, 0x2e6fc2, 0xe8c832, 0x3aa655, 0xe8e8e8, 0x22262b, 0x7a4fb5, 0xe87a2e],
   police: 0x1d3fae,
   taxi: 0xf2b705,

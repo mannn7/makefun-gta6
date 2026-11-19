@@ -1,3 +1,7 @@
+// V2 (dusk pass): the beach strip is low-rise pastel Art Deco hotels with
+// glowing neon signs, lifeguard towers stand on the sand, palms line the
+// beachfront and two more street lines, and the ground is dusk-toned (warm
+// concrete, turquoise sea, yellow centre dashes) with warm-lit windows.
 // Solara Bay itself: a procedural coastal city on a street grid. The ground is one
 // big plane with a painted canvas texture (asphalt, sidewalks, crosswalks, sand and
 // sea), the buildings are a single InstancedMesh of boxes with a lit-window texture,
@@ -15,13 +19,13 @@ function groundTexture(rng) {
   const ctx = canvas.getContext('2d');
   const toPx = (v) => ((v + WORLD_HALF) / (WORLD_HALF * 2)) * S;
 
-  // Base: warm concrete.
-  ctx.fillStyle = '#c9bda1';
+  // Base: warm concrete, dimmed for dusk but not black.
+  ctx.fillStyle = '#c2b096';
   ctx.fillRect(0, 0, S, S);
-  // Beach sand along the south edge, then the sea.
-  ctx.fillStyle = '#e8d49a';
+  // Beach sand along the south edge, then the turquoise sea.
+  ctx.fillStyle = '#f2ddab';
   ctx.fillRect(0, toPx(BEACH_Z), S, toPx(WATER_Z) - toPx(BEACH_Z));
-  ctx.fillStyle = '#2e9bb5';
+  ctx.fillStyle = '#35d0c0';
   ctx.fillRect(0, toPx(WATER_Z), S, S - toPx(WATER_Z));
   ctx.strokeStyle = 'rgba(255,255,255,0.5)';
   ctx.lineWidth = 3;
@@ -34,7 +38,7 @@ function groundTexture(rng) {
   }
 
   // Roads: dark asphalt strips on every street line, both directions.
-  ctx.fillStyle = '#3a3d42';
+  ctx.fillStyle = '#40454f';
   for (let k = -GRID; k <= GRID; k += 1) {
     const c = toPx(k * PITCH);
     const w = toPx(STREET) - toPx(0);
@@ -75,13 +79,13 @@ function windowTexture() {
   canvas.width = 128;
   canvas.height = 256;
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#e8ddc0';
+  ctx.fillStyle = '#f5ead2';
   ctx.fillRect(0, 0, 128, 256);
-  // A grid of windows; most dark glass, some lit warm.
+  // A grid of windows; at dusk most are lit warm, a few glow pink or cyan.
   for (let row = 0; row < 12; row += 1) {
     for (let col = 0; col < 6; col += 1) {
-      const lit = Math.random() < 0.35;
-      ctx.fillStyle = lit ? '#ffd98a' : '#2e4256';
+      const r = Math.random();
+      ctx.fillStyle = r < 0.55 ? '#ffd98a' : r < 0.62 ? '#ff7fb0' : r < 0.68 ? '#7fe8ff' : '#2e4256';
       ctx.fillRect(8 + col * 20, 10 + row * 20, 12, 12);
     }
   }
@@ -136,11 +140,17 @@ export function buildCity(scene, rng) {
       if (i === 3 && j === 3) continue;
       const cx = i * PITCH + PITCH / 2;
       const cz = j * PITCH + PITCH / 2;
-      const tall = rng.chance(0.22);
       const w = rng.range(20, 34);
       const d = rng.range(20, 34);
-      const h = tall ? rng.range(34, 58) : rng.range(10, 26);
-      placements.push({ x: cx, z: cz, w, d, h, color: rng.pick(PALETTE.building) });
+      if (j === GRID - 1) {
+        // The beach strip: low-rise pastel Art Deco hotels and bars, the
+        // postcard row of Solara Bay.
+        placements.push({ x: cx, z: cz, w, d, h: rng.range(9, 15), color: rng.pick(PALETTE.beach) });
+      } else {
+        const tall = rng.chance(0.22);
+        const h = tall ? rng.range(34, 58) : rng.range(10, 26);
+        placements.push({ x: cx, z: cz, w, d, h, color: rng.pick(PALETTE.building) });
+      }
       boxes.push({ minX: cx - w / 2, maxX: cx + w / 2, minZ: cz - d / 2, maxZ: cz + d / 2 });
     }
   }
@@ -161,6 +171,68 @@ export function buildCity(scene, rng) {
   buildings.instanceMatrix.needsUpdate = true;
   if (buildings.instanceColor) buildings.instanceColor.needsUpdate = true;
   scene.add(buildings);
+
+  // Neon signs: glowing bars on the beach-strip hotels and a few downtown
+  // towers, so the skyline glows pink, cyan and yellow at dusk. Each sign is a
+  // thin emissive box on the street-facing side of its building.
+  const neonColors = [0xff2e88, 0x00e5ff, 0xffe600, 0xff6b35, 0x7c5cff];
+  const signGeo = new THREE.BoxGeometry(1, 1, 1);
+  const signs = [];
+  for (const p of placements) {
+    const beach = p.h <= 16;
+    const tall = p.h >= 40;
+    if (!beach && !tall) continue;
+    if (beach && rng.chance(0.35)) continue; // not every hotel needs one
+    if (tall && rng.chance(0.7)) continue;
+    signs.push({
+      x: p.x,
+      z: p.z + p.d / 2 + 0.25, // south face, toward the street and the beach
+      y: beach ? p.h * 0.72 : p.h * 0.82,
+      w: Math.min(p.w * 0.7, beach ? 12 : 9),
+      h: beach ? 1.6 : 2.2,
+      color: rng.pick(neonColors),
+    });
+  }
+  for (const s of signs) {
+    const sign = new THREE.Mesh(
+      signGeo,
+      new THREE.MeshBasicMaterial({ color: s.color }),
+    );
+    sign.scale.set(s.w, s.h, 0.35);
+    sign.position.set(s.x, s.y, s.z);
+    scene.add(sign);
+    // A second, smaller bar beneath it in a contrasting neon colour.
+    const sub = new THREE.Mesh(
+      signGeo,
+      new THREE.MeshBasicMaterial({ color: s.color === 0xff2e88 ? 0x00e5ff : 0xff2e88 }),
+    );
+    sub.scale.set(s.w * 0.55, 0.7, 0.3);
+    sub.position.set(s.x, s.y - s.h, s.z);
+    scene.add(sub);
+  }
+
+  // Lifeguard towers on the sand, so the beach reads as a beach.
+  const towerWhite = new THREE.MeshLambertMaterial({ color: 0xf2ead8 });
+  const towerRed = new THREE.MeshLambertMaterial({ color: 0xd94f30 });
+  for (const tx of [-120, 0, 120]) {
+    const tower = new THREE.Group();
+    for (const [lx, lz] of [[-1.1, -1.1], [1.1, -1.1], [-1.1, 1.1], [1.1, 1.1]]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.12, 3.4, 6), towerWhite);
+      leg.position.set(lx, 1.7, lz);
+      tower.add(leg);
+    }
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.6, 1.6, 2.4), towerWhite);
+    cabin.position.y = 4.2;
+    tower.add(cabin);
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.25, 3), towerRed);
+    roof.position.y = 5.2;
+    tower.add(roof);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.4, 2.5), towerRed);
+    stripe.position.y = 3.6;
+    tower.add(stripe);
+    tower.position.set(tx, 0, BEACH_Z + 28);
+    scene.add(tower);
+  }
 
   // Street lamps at every other intersection corner.
   const lampGeo = new THREE.CylinderGeometry(0.09, 0.12, 6, 6);
@@ -190,7 +262,8 @@ export function buildCity(scene, rng) {
   bulbs.instanceMatrix.needsUpdate = true;
   scene.add(bulbs);
 
-  // Palm trees along the beachfront and a few sidewalks.
+  // Palm trees along the beachfront, the north edge, and two more street lines,
+  // so palms read in every shot instead of only on the sand.
   const trunkGeo = new THREE.CylinderGeometry(0.16, 0.26, 5.5, 6);
   trunkGeo.translate(0, 2.75, 0);
   const trunkMat = new THREE.MeshLambertMaterial({ color: 0x7a5a38 });
@@ -199,11 +272,13 @@ export function buildCity(scene, rng) {
     palmSpots.push({ x: k * PITCH + 10, z: BEACH_Z + 8 });
     palmSpots.push({ x: k * PITCH - 10, z: BEACH_Z + 14 });
     if (k % 2 === 0) palmSpots.push({ x: k * PITCH + 10, z: -CITY_HALF + 12 });
+    palmSpots.push({ x: k * PITCH + 10, z: -PITCH + 10 });
+    palmSpots.push({ x: k * PITCH - 10, z: PITCH - 10 });
   }
   const trunks = new THREE.InstancedMesh(trunkGeo, trunkMat, palmSpots.length);
   const tops = new THREE.InstancedMesh(
     new THREE.ConeGeometry(2.2, 3.2, 7),
-    new THREE.MeshLambertMaterial({ color: 0x2f7a4a }),
+    new THREE.MeshLambertMaterial({ color: 0x3f9e57 }),
     palmSpots.length,
   );
   palmSpots.forEach((p, index) => {

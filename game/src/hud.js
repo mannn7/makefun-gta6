@@ -1,13 +1,22 @@
-// The HUD: DOM over the canvas — health bar, cash, wanted stars, speed, objective,
-// clock, message feed, crosshair, contextual hints, the mission-complete banner,
-// and the start / pause / wasted / busted overlays. updateHud is called every
-// frame; the text nodes only change when their value does.
+// V2 (GTA 6 HUD): thin top-left bars — pink health with a heart, teal stamina
+// with a bolt, purple focus with an eye; top-right ammo + weapon icon, SIX
+// wanted stars with red evidence icons beneath, money and clock top-right.
+// The feed no longer uses the series name ("Car theft" instead).
+// The HUD: DOM over the canvas, laid out like the real GTA 6 HUD — thin bars
+// top-left (pink health with a heart, teal stamina with a bolt, purple focus
+// with an eye), ammo + weapon icon and SIX wanted stars top-right with small
+// red evidence icons beneath them, money and clock top-right, a light rounded
+// minimap bottom-left with a pink route line, a distance readout above it and a
+// compass below. updateHud is called every frame; the text nodes only change
+// when their value does.
 import { nearestCar } from './vehicles.js';
 export const SCREEN_TITLE = 'title';
 export const SCREEN_PLAY = 'play';
 export const SCREEN_PAUSED = 'paused';
 export const SCREEN_WASTED = 'wasted';
 export const SCREEN_BUSTED = 'busted';
+
+const MAX_STARS = 6;
 
 function setText(el, value) {
   if (el && el.textContent !== value) el.textContent = value;
@@ -18,9 +27,13 @@ export function createHud() {
   const hud = {
     root: $('hud'),
     healthFill: $('health-fill'),
-    healthText: $('health-text'),
+    staminaFill: $('stamina-fill'),
+    focusFill: $('focus-fill'),
     cash: $('cash'),
     stars: $('stars'),
+    evidence: $('evidence'),
+    weaponIcon: $('weapon-icon'),
+    ammo: $('ammo'),
     speed: $('speed'),
     clock: $('clock'),
     objective: $('objective'),
@@ -29,6 +42,8 @@ export function createHud() {
     hint: $('hint'),
     arrow: $('arrow'),
     arrowDist: $('arrow-dist'),
+    mapDist: $('map-dist'),
+    compassDial: $('compass-dial'),
     bannerEl: $('banner'),
     screens: {
       title: $('screen-title'),
@@ -55,11 +70,24 @@ export function createHud() {
       setText(hud.objective, text);
     },
     setWanted(level) {
-      setText(hud.stars, '★'.repeat(level) + '☆'.repeat(5 - level));
-      hud.stars.classList.toggle('hot', level > 0);
+      // Six stars: filled white while the heat is on, red at four stars and up,
+      // hollow grey for the rest. Beneath them, small red evidence icons show
+      // what the police know: the car, then the face, then the CCTV.
+      let html = '';
+      for (let i = 0; i < MAX_STARS; i += 1) {
+        if (i < level) html += `<span class="${level >= 4 ? 's-hot' : 's-on'}">★</span>`;
+        else html += '<span class="s-off">☆</span>';
+      }
+      if (hud.stars.innerHTML !== html) hud.stars.innerHTML = html;
+      const icons = [];
+      if (level >= 1) icons.push('🚗');
+      if (level >= 3) icons.push('👤');
+      if (level >= 5) icons.push('📹');
+      setText(hud.evidence, icons.join(' '));
     },
     setArmed(armed) {
       hud.crosshair.style.display = armed ? 'block' : 'none';
+      setText(hud.weaponIcon, armed ? '🔫' : '👊');
     },
     banner(text) {
       setText(hud.bannerEl, text);
@@ -86,8 +114,10 @@ export function updateHud(g, dt) {
   const p = g.player;
   hud.healthFill.style.width = `${Math.max(0, p.health)}%`;
   hud.healthFill.classList.toggle('low', p.health < 30);
-  setText(hud.healthText, `${Math.ceil(Math.max(0, p.health))} HP`);
+  hud.staminaFill.style.width = `${Math.max(0, p.stamina)}%`;
+  hud.focusFill.style.width = `${Math.max(0, p.focus)}%`;
   setText(hud.cash, `$${g.cash}`);
+  setText(hud.ammo, p.armed ? `${p.ammo}` : '');
   const speedKmh = p.car ? Math.round(Math.abs(p.car.speed) * 3.6) : 0;
   setText(hud.speed, p.car ? `${speedKmh} km/h` : '');
   const minutes = Math.floor(g.clockMinutes) % (24 * 60);
@@ -104,9 +134,25 @@ export function updateHud(g, dt) {
     hud.arrow.style.display = 'block';
     hud.arrow.style.transform = `translateX(-50%) rotate(${relative}rad)`;
     setText(hud.arrowDist, `${Math.round(Math.hypot(dx, dz))} m`);
+    setText(hud.mapDist, `${Math.round(Math.hypot(dx, dz))} m`);
   } else {
     hud.arrow.style.display = 'none';
     setText(hud.arrowDist, '');
+    setText(hud.mapDist, '');
+  }
+  // Compass strip under the minimap: the letter for the direction the camera
+  // actually faces sits under the pink marker. Each 90° of heading is one
+  // 60 px letter. (cameraYaw only steers the on-foot orbit, so the heading is
+  // read from the camera itself.)
+  if (hud.compassDial) {
+    const dx = g.cameraLook.x - g.cameraPos.x;
+    const dz = g.cameraLook.z - g.cameraPos.z;
+    const heading = ((Math.atan2(dx, -dz) * 180) / Math.PI % 360 + 360) % 360;
+    let x = 70 - (heading * 60) / 90;
+    // The dial repeats every 240 px (N E S W); wrap the offset so the visible
+    // 200 px window always stays inside the 540 px dial.
+    x = ((x + 340) % 240 + 240) % 240 - 340;
+    hud.compassDial.style.transform = `translateX(${x}px)`;
   }
   // Contextual hint: what E does right now.
   let hint = '';

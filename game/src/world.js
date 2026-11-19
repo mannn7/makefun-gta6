@@ -1,3 +1,7 @@
+// V2 (dusk pass): a gradient sky dome (orange horizon → pink → purple → deep
+// blue) plus a glowing sun disc low over the sea replace the flat sky, and the
+// sun is a low warm golden-hour light with long shadows. Stamina and focus now
+// feed the GTA 6 top-left meters.
 // The world: one state object that every system reads and writes, the fixed-step
 // update that runs them in order, the third-person camera, and save/load. The
 // renderer and the screens live in main.js; this file only knows the simulation.
@@ -20,17 +24,71 @@ import { drawMinimap } from './minimap.js';
 export const EVENT_WASTED = 1;
 export const EVENT_BUSTED = 2;
 
+/** A dusk sky dome: a canvas gradient (orange horizon → pink → purple → deep
+ * blue top) on the inside of a big sphere, so the sky reads as golden hour from
+ * every angle instead of one flat colour. */
+function createSkyDome() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 4;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0.0, '#23235e'); // zenith: deep dusk blue
+  grad.addColorStop(0.38, '#6b4a9e'); // purple
+  grad.addColorStop(0.52, '#e85d9e'); // pink band
+  grad.addColorStop(0.62, '#ff9a3d'); // orange horizon glow
+  grad.addColorStop(0.72, '#ffc46b'); // low sun haze
+  grad.addColorStop(1.0, '#7a4a5e'); // below the horizon
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 4, 256);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const dome = new THREE.Mesh(
+    new THREE.SphereGeometry(950, 24, 16),
+    new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide, fog: false }),
+  );
+  return dome;
+}
+
+/** A soft glowing disc where the sun sits low over the sea. */
+function createSunDisc() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createRadialGradient(64, 64, 4, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(255,240,200,1)');
+  grad.addColorStop(0.25, 'rgba(255,190,100,0.9)');
+  grad.addColorStop(0.6, 'rgba(255,120,60,0.35)');
+  grad.addColorStop(1, 'rgba(255,120,60,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 128, 128);
+  const tex = new THREE.CanvasTexture(canvas);
+  const disc = new THREE.Mesh(
+    new THREE.PlaneGeometry(260, 260),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, fog: false }),
+  );
+  // Low over the sea to the south-west, where the camera looks in the shots.
+  disc.position.set(-260, 70, 620);
+  disc.lookAt(0, 40, 0);
+  return disc;
+}
+
 /** Build a fresh game: scene, lights, city, cars, people, missions, HUD hooks. */
 export function createGame(seed) {
   const rng = createRandom(seed);
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(PALETTE.sky);
-  scene.fog = new THREE.Fog(PALETTE.fog, 220, 720);
+  scene.add(createSkyDome());
+  scene.add(createSunDisc());
+  scene.fog = new THREE.Fog(PALETTE.fog, 200, 650);
 
-  const sun = new THREE.DirectionalLight(PALETTE.sun, 1.6);
-  sun.position.set(120, 180, 60);
+  // Golden hour: the sun sits low and warm, so shadows stretch long and the
+  // whole city glows orange-pink instead of glaring white.
+  const sun = new THREE.DirectionalLight(PALETTE.sun, 2.5);
+  sun.position.set(280, 80, 140);
   scene.add(sun);
-  scene.add(new THREE.HemisphereLight(PALETTE.hemiSky, PALETTE.hemiGround, 0.9));
+  scene.add(new THREE.HemisphereLight(PALETTE.hemiSky, PALETTE.hemiGround, 1.05));
 
   const g = {
     seed,
@@ -79,6 +137,8 @@ export function createGame(seed) {
     walkPhase: 0,
     moving: false,
     health: 100,
+    stamina: 100,
+    focus: 0,
     ammo: 24,
     armed: false,
     punchCooldown: 0,
@@ -134,6 +194,8 @@ export function resetGame(g) {
   p.vy = 0;
   p.heading = 0;
   p.health = 100;
+  p.stamina = 100;
+  p.focus = 0;
   p.ammo = 24;
   p.armed = false;
   p.car = null;
@@ -170,6 +232,13 @@ export function updateGame(g, dt, input) {
   }
   if (p.car) updatePlayerCar(g, dt, input);
   else updatePlayerOnFoot(g, dt, input);
+  // Stamina drains while sprinting on foot and recovers otherwise; focus builds
+  // while the pistol is out and fades when it is holstered.
+  const sprinting = !p.car && p.moving && (input.held('ShiftLeft') || input.held('ShiftRight'));
+  p.stamina = sprinting
+    ? Math.max(0, p.stamina - 22 * dt)
+    : Math.min(100, p.stamina + 16 * dt);
+  p.focus = p.armed ? Math.min(100, p.focus + 10 * dt) : Math.max(0, p.focus - 6 * dt);
   updateTraffic(g, dt);
   updatePedestrians(g, dt);
   updatePolice(g, dt);
