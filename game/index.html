@@ -1,4 +1,8 @@
 <!doctype html>
+<!-- V2 (GTA 6 HUD + dusk): thin top-left meters (pink health, teal stamina,
+     purple focus), top-right ammo + six stars + evidence icons + money/clock,
+     a light rounded minimap with pink route line and compass below, and a
+     dusk-styled title/pause/wasted/busted overlay with a neon glow. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -13,37 +17,62 @@
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   .hidden { display: none !important; }
   #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  /* ---- HUD ---- */
+  /* ---- HUD: the GTA 6 layout — thin bars top-left, ammo + six stars top-right,
+     a light rounded minimap bottom-left, and almost nothing else until needed. */
   #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
-  #topleft { position: absolute; top: 14px; left: 16px; }
-  #health { width: 220px; height: 18px; background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.5); border-radius: 9px; overflow: hidden; position: relative; }
-  #health-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #2ecc71, #7ee2a0); transition: width 0.2s; }
-  #health-fill.low { background: linear-gradient(90deg, #e74c3c, #f1948a); }
-  #health-text { position: absolute; inset: 0; text-align: center; font-size: 12px; font-weight: 700; line-height: 18px; text-shadow: 0 1px 2px #000; }
-  #cash { margin-top: 6px; font-size: 26px; font-weight: 800; color: #7ee787; text-shadow: 0 2px 4px #000; }
-  #stars { font-size: 26px; letter-spacing: 3px; color: rgba(255,255,255,0.45); text-shadow: 0 2px 4px #000; }
-  #stars.hot { color: #ffd23e; }
+  #meters { position: absolute; top: 16px; left: 18px; }
+  .meter { display: flex; align-items: center; margin-bottom: 6px; }
+  .meter-icon { width: 18px; font-size: 13px; text-align: center; text-shadow: 0 1px 3px #000; }
+  .meter-track { position: relative; width: 170px; height: 7px; background: rgba(0,0,0,0.5);
+    border-radius: 4px; overflow: hidden; }
+  .meter-fill { height: 100%; border-radius: 4px; transition: width 0.2s; }
+  .meter-fill.health { background: linear-gradient(90deg, #ff2e88, #ff5e8a); }
+  .meter-fill.health.low { background: linear-gradient(90deg, #e74c3c, #f1948a); }
+  .meter-fill.stamina { background: linear-gradient(90deg, #14b8a6, #2dd4bf); }
+  .meter-fill.focus { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
+  .meter-notch { position: absolute; left: 25%; top: 0; width: 2px; height: 100%;
+    background: rgba(255,255,255,0.85); }
   #topright { position: absolute; top: 14px; right: 16px; text-align: right; }
-  #clock { font-size: 26px; font-weight: 800; text-shadow: 0 2px 4px #000; }
-  #speed { font-size: 18px; font-weight: 700; color: #ffd23e; text-shadow: 0 2px 4px #000; }
+  #weapon { font-size: 15px; font-weight: 700; text-shadow: 0 1px 3px #000; }
+  #ammo { margin-left: 6px; color: #fff; }
+  #stars { font-size: 21px; letter-spacing: 4px; line-height: 1.3; text-shadow: 0 2px 4px #000; }
+  #stars .s-off { color: rgba(255,255,255,0.30); }
+  #stars .s-on { color: #fff; }
+  #stars .s-hot { color: #ff3b30; }
+  #evidence { font-size: 13px; letter-spacing: 5px; color: #ff3b30; text-shadow: 0 1px 3px #000; min-height: 16px; }
+  #cash { margin-top: 2px; font-size: 24px; font-weight: 800; color: #7ee787; text-shadow: 0 2px 4px #000; }
+  #clock { font-size: 22px; font-weight: 800; text-shadow: 0 2px 4px #000; }
+  #speed { font-size: 16px; font-weight: 700; color: #fff; text-shadow: 0 2px 4px #000; }
   #objective { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); max-width: 560px;
-    background: rgba(0,0,0,0.55); border: 1px solid rgba(255,210,62,0.7); border-radius: 8px;
-    padding: 8px 16px; font-size: 15px; font-weight: 600; text-align: center; }
-  #arrow { position: absolute; top: 74px; left: 50%; font-size: 30px; color: #ffd23e;
+    background: rgba(10,10,22,0.55); border-radius: 999px;
+    padding: 7px 18px; font-size: 14px; font-weight: 600; text-align: center; }
+  #arrow { position: absolute; top: 74px; left: 50%; font-size: 30px; color: #ff4f9a;
     text-shadow: 0 0 8px #000, 0 2px 4px #000; transform: translateX(-50%); }
   #arrow-dist { position: absolute; top: 108px; left: 50%; transform: translateX(-50%);
     font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px #000; }
-  #minimap { position: absolute; left: 16px; bottom: 16px; width: 220px; height: 220px;
-    border: 2px solid rgba(255,255,255,0.6); border-radius: 8px; background: #c9bda1; }
+  #mapwrap { position: absolute; left: 16px; bottom: 16px; }
+  #map-dist { text-align: center; font-size: 13px; font-weight: 700; color: #fff;
+    text-shadow: 0 1px 3px #000; margin-bottom: 4px; min-height: 16px; }
+  #minimap { width: 200px; height: 200px; display: block;
+    border: 2px solid rgba(255,255,255,0.75); border-radius: 14px; background: #f2ead8;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.5); }
+  #compass { width: 200px; height: 20px; margin-top: 5px; overflow: hidden; position: relative;
+    background: rgba(10,10,22,0.45); border-radius: 10px; }
+  #compass-dial { position: absolute; top: 0; left: 0; height: 20px; white-space: nowrap;
+    font-size: 12px; font-weight: 700; color: #fff; line-height: 20px; text-shadow: 0 1px 2px #000; }
+  #compass-dial span { display: inline-block; width: 60px; text-align: center; }
+  #compass-dial .c-n { color: #ff5e8a; }
+  #compass::before { content: ""; position: absolute; left: 50%; top: 0; width: 2px; height: 20px;
+    margin-left: -1px; background: #ff5e8a; z-index: 2; }
   #feed { position: absolute; right: 16px; bottom: 16px; width: 320px; text-align: right; }
-  .feed-line { background: rgba(0,0,0,0.55); border-radius: 6px; padding: 6px 10px; margin-top: 5px;
+  .feed-line { background: rgba(10,10,22,0.55); border-radius: 6px; padding: 6px 10px; margin-top: 5px;
     font-size: 13px; display: inline-block; }
   #crosshair { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
     font-size: 26px; font-weight: 700; color: #fff; text-shadow: 0 0 6px #000; display: none; }
   #hint { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
-    background: rgba(0,0,0,0.55); border-radius: 6px; padding: 6px 14px; font-size: 13px; }
+    background: rgba(10,10,22,0.55); border-radius: 6px; padding: 6px 14px; font-size: 13px; }
   #banner { position: absolute; left: 50%; top: 34%; transform: translateX(-50%);
-    font-size: 34px; font-weight: 800; color: #ffd23e; text-shadow: 0 3px 10px #000;
+    font-size: 34px; font-weight: 800; color: #fff; text-shadow: 0 0 18px #ff2e88, 0 3px 10px #000;
     opacity: 0; transition: opacity 0.4s; white-space: nowrap; }
   #btn-mission { position: absolute; left: 50%; bottom: 64px; transform: translateX(-50%);
     pointer-events: auto; background: #d94f30; color: #fff; border: none; border-radius: 8px;
@@ -51,15 +80,16 @@
   #btn-mission:hover { background: #e8603f; }
   /* ---- Overlays ---- */
   .overlay { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
-    background: linear-gradient(180deg, rgba(10,16,28,0.55), rgba(10,16,28,0.85)); }
-  .panel { max-width: 640px; width: 92%; background: rgba(16,22,36,0.92); border: 1px solid rgba(255,210,62,0.55);
+    background: linear-gradient(180deg, rgba(40,16,60,0.5), rgba(20,10,40,0.88)); }
+  .panel { max-width: 640px; width: 92%; background: rgba(24,14,44,0.92); border: 1px solid rgba(255,46,136,0.55);
     border-radius: 14px; padding: 28px 34px; text-align: center; box-shadow: 0 12px 48px rgba(0,0,0,0.6); }
-  .panel h1 { margin: 0 0 4px; font-size: 54px; letter-spacing: 4px; color: #ffd23e; }
+  .panel h1 { margin: 0 0 4px; font-size: 54px; letter-spacing: 4px; color: #fff;
+    text-shadow: 0 0 24px #ff2e88, 0 2px 8px #000; }
   .panel h2 { margin: 0 0 14px; font-size: 30px; color: #fff; }
-  .panel p { color: #c8d0dc; font-size: 15px; line-height: 1.55; }
-  .panel .tag { color: #7ee787; font-weight: 700; letter-spacing: 2px; font-size: 13px; }
+  .panel p { color: #d8cfe8; font-size: 15px; line-height: 1.55; }
+  .panel .tag { color: #2dd4bf; font-weight: 700; letter-spacing: 2px; font-size: 13px; }
   .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 18px; text-align: left;
-    font-size: 14px; color: #c8d0dc; margin: 14px auto; max-width: 520px; }
+    font-size: 14px; color: #d8cfe8; margin: 14px auto; max-width: 520px; }
   .controls b { color: #fff; }
   .big-btn { background: #d94f30; color: #fff; border: none; border-radius: 9px; padding: 13px 26px;
     font-size: 17px; font-weight: 800; cursor: pointer; margin: 6px 4px 0; }
@@ -71,16 +101,27 @@
 <canvas id="game" aria-label="Solara Bay: an open-world crime game. Drive, steal cars, run jobs for Rosa, and lose the cops."></canvas>
 
 <div id="hud" class="hidden">
-  <div id="topleft">
-    <div id="health"><div id="health-fill"></div><span id="health-text">100 HP</span></div>
-    <div id="cash">$0</div>
-    <div id="stars">☆☆☆☆☆</div>
+  <div id="meters">
+    <div class="meter"><span class="meter-icon">♥</span><div class="meter-track"><div id="health-fill" class="meter-fill health"></div><span class="meter-notch"></span></div></div>
+    <div class="meter"><span class="meter-icon">⚡</span><div class="meter-track"><div id="stamina-fill" class="meter-fill stamina"></div></div></div>
+    <div class="meter"><span class="meter-icon">👁</span><div class="meter-track"><div id="focus-fill" class="meter-fill focus"></div></div></div>
   </div>
-  <div id="topright"><div id="clock">10:30</div><div id="speed"></div></div>
+  <div id="topright">
+    <div id="weapon"><span id="weapon-icon">👊</span><span id="ammo"></span></div>
+    <div id="stars"></div>
+    <div id="evidence"></div>
+    <div id="cash">$0</div>
+    <div id="clock">18:45</div>
+    <div id="speed"></div>
+  </div>
   <div id="objective">Press J to start your first job with Rosa.</div>
   <div id="arrow">▲</div>
   <div id="arrow-dist"></div>
-  <canvas id="minimap" width="220" height="220"></canvas>
+  <div id="mapwrap">
+    <div id="map-dist"></div>
+    <canvas id="minimap" width="200" height="200"></canvas>
+    <div id="compass"><div id="compass-dial"><span class="c-n">N</span><span>E</span><span>S</span><span>W</span><span class="c-n">N</span><span>E</span><span>S</span><span>W</span><span class="c-n">N</span></div></div>
+  </div>
   <div id="feed"></div>
   <div id="crosshair">+</div>
   <div id="hint"></div>
