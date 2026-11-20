@@ -48,8 +48,9 @@ function muzzleFlash(g) {
   }
 }
 
-/** Fire the pistol along the camera's aim: the nearest thing in the crosshair takes it. */
-function shoot(g) {
+/** Fire the pistol along the camera's aim: the nearest thing in the crosshair takes it.
+ * Exported so a staged screenshot can fire once and freeze the muzzle flash. */
+export function shoot(g) {
   const p = g.player;
   if (p.ammo <= 0) {
     g.hud.feed('Out of ammo — find a yellow pickup.');

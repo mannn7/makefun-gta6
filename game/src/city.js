@@ -38,7 +38,9 @@ function groundTexture(rng) {
   }
 
   // Roads: dark asphalt strips on every street line, both directions.
-  ctx.fillStyle = '#40454f';
+  // R7: lightened a notch (#40454f → #4e535e) — the near road was the darkest
+  // patch in the chase and street frames.
+  ctx.fillStyle = '#4e535e';
   for (let k = -GRID; k <= GRID; k += 1) {
     const c = toPx(k * PITCH);
     const w = toPx(STREET) - toPx(0);

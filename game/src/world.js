@@ -2,6 +2,9 @@
 // blue) plus a glowing sun disc low over the sea replace the flat sky, and the
 // sun is a low warm golden-hour light with long shadows. Stamina and focus now
 // feed the GTA 6 top-left meters.
+// R7 (foreground light): the hemisphere light is stronger (1.05 → 1.35) — the
+// road right in front of the camera read as a black hole in the chase and
+// street frames, and the low sun alone barely touches a flat road.
 // The world: one state object that every system reads and writes, the fixed-step
 // update that runs them in order, the third-person camera, and save/load. The
 // renderer and the screens live in main.js; this file only knows the simulation.
@@ -88,7 +91,7 @@ export function createGame(seed) {
   const sun = new THREE.DirectionalLight(PALETTE.sun, 2.5);
   sun.position.set(280, 80, 140);
   scene.add(sun);
-  scene.add(new THREE.HemisphereLight(PALETTE.hemiSky, PALETTE.hemiGround, 1.05));
+  scene.add(new THREE.HemisphereLight(PALETTE.hemiSky, PALETTE.hemiGround, 1.35));
 
   const g = {
     seed,

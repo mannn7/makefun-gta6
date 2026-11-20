@@ -5,6 +5,10 @@
 // is low and close (the red coupe big, cruisers flanking its tail), oncoming
 // traffic ahead for depth, pedestrians on the sidewalks, and every scene runs a
 // real job so the HUD arrow, pink minimap route and objective all read.
+// R7: the steal's stale feed lines are dropped in putInCar (they claimed a
+// wanted level the HUD no longer showed), and the mission scene ends on a real
+// combat moment — Marco on foot, pistol drawn, firing at a cruiser blocking the
+// road to the cash drop, the beacon still glowing ahead.
 // Screenshot scenes: each one plays the REAL game forward from a fresh world with
 // a fixed seed and a simple autopilot (waypoint driving, sidewalk walking), so the
 // frame is what a short game really looks like and the same seed always gives the
@@ -13,7 +17,8 @@
 import * as THREE from 'three';
 import { GRID, PITCH, STEP } from './config.js';
 import { resetGame, updateGame } from './world.js';
-import { enterCar, makeCar, nearestCar } from './vehicles.js';
+import { enterCar, exitCar, makeCar, nearestCar } from './vehicles.js';
+import { shoot } from './combat.js';
 import { spawnPedAt } from './pedestrians.js';
 import { updateHud } from './hud.js';
 import { drawMinimap } from './minimap.js';
@@ -134,11 +139,20 @@ function putInCar(g, x, z, heading, color) {
   }
   g.player.x = car.x;
   g.player.z = car.z;
+  // The steal prints "Car theft — wanted level 1." and "You stole a car!"
+  // into the feed, but a staged scene then resets the heat to zero — those
+  // lines would linger, claiming a wanted level the HUD no longer shows.
+  // Drop exactly the lines this steal added (none, if the car was traffic)
+  // and nothing else: a mission brief printed before or after stays put.
+  const feedBefore = new Set([...g.hud.feedBox.children]);
   enterCar(g, car);
   // A stolen car in a staged scene should not add heat unless the scene wants it.
   if (g.wanted > 0) {
     g.wanted = 0;
     g.hud.setWanted(0);
+  }
+  for (const line of [...g.hud.feedBox.children]) {
+    if (!feedBefore.has(line)) line.remove();
   }
 }
 
@@ -306,7 +320,11 @@ const SCENES = {
     stageCar(g, p.x + 55, 228.8, Math.PI / 2, 0xe8c832, 'traffic', 9);
     refreshHud(g);
   },
-  // A mission in progress: the M3 cash-drop beacon ahead, Marco driving to it.
+  // A mission in progress, ending on combat: the M3 cash-drop beacon ahead,
+  // Marco drives to it — then steps out, draws the pistol and fires at a
+  // cruiser blocking the road to the drop. The beacon, the HUD arrow and the
+  // objective stay readable; the crosshair, the pistol icon, the ammo count
+  // and the frozen muzzle flash are what make the combat real in the frame.
   mission(g, input) {
     g.missions.start(2);
     putInCar(g, -116, -20, 0, 0xe8c832);
@@ -314,14 +332,46 @@ const SCENES = {
     const route = [{ x: -116, z: 60 }];
     playForward(g, input, 5.5, () => drivePilot(g, route));
     const car = g.player.car;
+    // Combat moment: Marco steps out beside the gold coupe, pistol drawn,
+    // facing north toward the beacon. The camera settles behind him on foot
+    // (a short no-op run — no driving after this point).
+    exitCar(g);
+    const p = g.player;
+    p.heading = 0;
+    p.armed = true;
+    p.ammo = 24;
+    g.hud.setArmed(true);
+    g.cameraYaw = Math.PI;
+    playForward(g, input, 0.5, () => ({ x: 0, y: 0 }));
+    // A cruiser blocking the road between Marco and the beacon, facing him.
+    // Staged after the last simulation step, so it never moves: updateTraffic
+    // only drives 'traffic' cars, and it is not in the police chase list.
+    const cruiser = makeCar(g, p.x, p.z + 14, Math.PI, 0x1d3fae, 'police');
+    cruiser.speed = 0;
     // Oncoming traffic in the far lane, past the beacon, for depth down the road.
     for (const dz of [45, 70, 95]) {
       stageCar(g, -119.2, car.z + dz, Math.PI, g.rng.pick([0x2e6fc2, 0xc23b2e, 0xe8e8e8]), 'traffic', 8);
     }
-    // Pedestrians on the sidewalks flanking the street, near the drop.
+    // Pedestrians on the sidewalks flanking the street, near the drop — kept
+    // off the firing line (the shot runs straight north from Marco).
     spawnPedAt(g, -106.5, car.z + 12, 0, 0xd94f30);
     spawnPedAt(g, -125.5, car.z + 25, Math.PI, 0x3aa655);
     spawnPedAt(g, -106.5, car.z + 38, Math.PI / 2, 0xe8c832);
+    // Fire: the muzzle flash and its light freeze in the frame (no updateGame
+    // runs after staging). The shot misses the cruiser — the camera ray drops
+    // below it — so it adds no heat and no feed line, and the mission brief
+    // stays clean.
+    shoot(g);
+    // The flash rides 1.2 m in front of the camera by default, a huge yellow
+    // square at that range — and dead ahead of Marco it hides behind his body.
+    // Move it to his right hand, just ahead of his shoulder, facing the
+    // camera, and take its light with it; make it a touch bigger so it reads.
+    const gunX = p.x + Math.cos(p.heading) * 0.9 + Math.sin(p.heading) * 0.6;
+    const gunZ = p.z - Math.sin(p.heading) * 0.9 + Math.cos(p.heading) * 0.6;
+    g.muzzle.position.set(gunX, 1.3, gunZ);
+    g.muzzle.scale.set(1.5, 1.5, 1);
+    g.muzzle.quaternion.copy(g.camera.quaternion);
+    g.muzzleLight.position.copy(g.muzzle.position);
     refreshHud(g);
   },
 };
