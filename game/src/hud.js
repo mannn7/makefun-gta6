@@ -111,6 +111,10 @@ export function updateHud(g, dt) {
     hud.bannerTimer -= dt;
     if (hud.bannerTimer <= 0) hud.bannerEl.style.opacity = '0';
   }
+  // The Start-job button only matters when no job is running: while a mission
+  // is active it would sit in the middle of the frame offering a job that
+  // cannot start, so it hides until the job is done.
+  if (hud.missionBtn) hud.missionBtn.style.display = g.missions.active ? 'none' : 'block';
   const p = g.player;
   hud.healthFill.style.width = `${Math.max(0, p.health)}%`;
   hud.healthFill.classList.toggle('low', p.health < 30);

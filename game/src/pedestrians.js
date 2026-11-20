@@ -57,6 +57,29 @@ export function spawnPedestrians(g) {
   }
 }
 
+/** Spawn one pedestrian at an exact spot (for staged screenshots): a fixed
+ * figure on a sidewalk, so a frame can have people where the camera looks
+ * instead of wherever the random spread happened to put them. */
+export function spawnPedAt(g, x, z, heading, shirt) {
+  const mesh = createPedMesh(shirt ?? g.rng.pick(SHIRTS));
+  mesh.position.set(x, 0, z);
+  mesh.rotation.y = heading;
+  g.scene.add(mesh);
+  const ped = {
+    mesh,
+    x,
+    z,
+    heading,
+    speed: 1.2,
+    phase: g.rng.range(0, 6),
+    down: 0,
+    flee: 0,
+    alongX: true,
+  };
+  g.peds.push(ped);
+  return ped;
+}
+
 export function updatePedestrians(g, dt) {
   const px = g.player.x;
   const pz = g.player.z;

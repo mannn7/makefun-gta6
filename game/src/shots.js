@@ -1,8 +1,10 @@
-// V2 (restage): all four scenes now play at dusk against the pastel + neon
-// beach strip — the chase at dusk with neon behind, the drive down the beach
-// strip, the on-foot walk past the lifeguard tower and hotels, and the mission
-// beacon at sunset. The street scene walks north-east so the frame holds the
-// beach-strip buildings and a lifeguard tower, not just empty sand.
+// V2 (restage) + R6 (density pass): all four scenes now play at dusk against the
+// pastel + neon beach strip — the chase at dusk with neon behind, the drive down
+// the beach strip, the on-foot walk past the lifeguard tower and hotels, and the
+// mission beacon at sunset. R6 stages DENSITY into the frame: the chase camera
+// is low and close (the red coupe big, cruisers flanking its tail), oncoming
+// traffic ahead for depth, pedestrians on the sidewalks, and every scene runs a
+// real job so the HUD arrow, pink minimap route and objective all read.
 // Screenshot scenes: each one plays the REAL game forward from a fresh world with
 // a fixed seed and a simple autopilot (waypoint driving, sidewalk walking), so the
 // frame is what a short game really looks like and the same seed always gives the
@@ -12,6 +14,9 @@ import * as THREE from 'three';
 import { GRID, PITCH, STEP } from './config.js';
 import { resetGame, updateGame } from './world.js';
 import { enterCar, makeCar, nearestCar } from './vehicles.js';
+import { spawnPedAt } from './pedestrians.js';
+import { updateHud } from './hud.js';
+import { drawMinimap } from './minimap.js';
 
 /** A synthetic input that answers like the real one, steered by the autopilot. */
 function pilotInput() {
@@ -151,9 +156,30 @@ function clearRoute(g, alongX, line, from, to) {
   }
 }
 
+/** Stage a car for the final frame (no more simulation runs after this, so it
+ * needs no route — it just has to sit in the frame, positioned and facing). */
+function stageCar(g, x, z, heading, color, kind, speed) {
+  const car = makeCar(g, x, z, heading, color, kind);
+  car.speed = speed || 0;
+  car.cruise = speed || 0;
+  car.mesh.position.set(x, 0, z);
+  car.mesh.rotation.y = heading;
+  return car;
+}
+
+/** Refresh the HUD + minimap after staging, so they match the final frame
+ * (the compass, the arrow distance, the police dots) instead of the last
+ * simulation step. */
+function refreshHud(g) {
+  updateHud(g, STEP);
+  drawMinimap(g);
+}
+
 const SCENES = {
-  // COVER: a police chase — wanted 3, two cruisers closing in, the safehouse
-  // marker ahead, the player flooring it down Marina Row.
+  // COVER: a police chase — wanted 4 (red stars), two cruisers flanking the
+  // player's tail, the safehouse marker ahead, the player flooring it down
+  // Marina Row. The camera is low and close now, so the red coupe fills the
+  // frame instead of shrinking to a dot.
   chase(g, input) {
     putInCar(g, 0, -180, 0, 0xc23b2e);
     clearRoute(g, false, 0, -180, 180);
@@ -176,12 +202,16 @@ const SCENES = {
     // off it as they are reached, and a fresh array each call would forget.
     const route = [{ x: 0, z: 60 }, { x: 0, z: 180 }];
     playForward(g, input, 9, () => drivePilot(g, route));
-    // Stage the cruisers for the frame: both right behind the red coupe, where
-    // a chase puts them. They chased for real for nine seconds; this places
-    // them where the camera can see them.
     const playerCar = g.player.car;
+    // Heat up to four stars for the frame: red stars + car/face evidence in
+    // the HUD. (No feed line: the reason is empty on purpose.)
+    g.police.addWanted(1, '');
+    // Stage the cruisers for the frame: right on the player's tail, just
+    // behind and to the sides, so they flank the red coupe in the centre of
+    // the frame instead of looming over the HUD corners. (An earlier pass put
+    // them 5-8 m from the camera and they blocked the minimap and the feed.)
     g.police.cars.forEach((cop, i) => {
-      const off = i === 0 ? [-5, -12] : [5, -18];
+      const off = i === 0 ? [-3, -6] : [3, -9];
       cop.x = playerCar.x + off[0];
       cop.z = playerCar.z + off[1];
       cop.heading = playerCar.heading;
@@ -189,20 +219,38 @@ const SCENES = {
       cop.mesh.position.set(cop.x, 0, cop.z);
       cop.mesh.rotation.y = cop.heading;
     });
-    // Cinematic camera: high behind the cruisers, looking forward over them at
-    // the player's car with the road ahead — the chase reads as a line of cars.
-    g.camera.position.set(playerCar.x + 4, 12, playerCar.z - 44);
-    g.camera.lookAt(playerCar.x, 1, playerCar.z + 6);
+    // Oncoming traffic ahead, for depth: cars in the far lane coming toward
+    // the chase, far enough ahead that they read as traffic, not a collision.
+    for (const dz of [35, 60, 85]) {
+      stageCar(g, -3.2, playerCar.z + dz, Math.PI, g.rng.pick([0x2e6fc2, 0xe8c832, 0xe8e8e8]), 'traffic', 8);
+    }
+    // Pedestrians on the sidewalks beside the chase, scattering from the noise.
+    spawnPedAt(g, 9.5, playerCar.z + 8, Math.PI, 0xd94f30);
+    spawnPedAt(g, -9.5, playerCar.z + 18, 0, 0x3aa655);
+    spawnPedAt(g, 9.5, playerCar.z + 32, Math.PI / 2, 0xe8c832);
+    // Cinematic camera: low and close behind the player's car, the cruisers
+    // flanking its tail in the centre of the frame, the road and the dusk
+    // city ahead.
+    g.camera.position.set(playerCar.x + 1, 5, playerCar.z - 20);
+    g.camera.lookAt(playerCar.x, 1.3, playerCar.z + 10);
     g.cameraPos.copy(g.camera.position);
+    g.cameraLook.set(playerCar.x, 1.3, playerCar.z + 10);
+    refreshHud(g);
   },
   // Driving down the beach strip at dusk: pastel hotels and neon on the left,
   // palms, sand and the turquoise sea on the right. Marco drives in the
   // eastbound lane; three oncoming cars in the westbound lane pass him (6.4 m
-  // apart, no sideswipe) so the street reads as alive.
+  // apart, no sideswipe) so the street reads as alive. This is a delivery run
+  // (M1, second stage), so the HUD arrow, the pink minimap route and the
+  // objective all show.
   drive(g, input) {
     putInCar(g, -180, 228.8, Math.PI / 2, 0x2e6fc2);
     clearRoute(g, true, 232, -180, 180);
-    for (const x of [90, 120, 150, 180]) {
+    g.missions.start(0);
+    g.missions.stage = 1;
+    g.missions.placeBeacon();
+    g.hud.setObjective('Deliver the package to the Sunset Motel');
+    for (const x of [30, 60, 90, 120, 150, 180]) {
       const car = makeCar(g, x, 235.2, -Math.PI / 2, g.rng.pick([0xc23b2e, 0xe8c832, 0x3aa655, 0xe8e8e8]), 'traffic');
       car.route = { alongX: true, line: 232, along: x, dir: -1, lane: 235.2 };
       car.speed = 8;
@@ -211,20 +259,52 @@ const SCENES = {
     }
     const route = [{ x: 180, z: 228.8 }];
     playForward(g, input, 10, () => drivePilot(g, route));
+    const car = g.player.car;
+    // Traffic ahead in the frame: oncoming cars in the far lane and one car
+    // ahead in the player's own lane, so the road ahead is never empty.
+    stageCar(g, car.x + 45, 235.2, -Math.PI / 2, 0xe8c832, 'traffic', 8);
+    stageCar(g, car.x + 80, 235.2, -Math.PI / 2, 0xc23b2e, 'traffic', 8);
+    stageCar(g, car.x + 55, 228.8, Math.PI / 2, 0x3aa655, 'traffic', 10);
+    // Pedestrians on the hotel sidewalk, on the left of the frame.
+    for (const [dx, shirt] of [[5, 0xd94f30], [20, 0x3a7bd5], [35, 0x3aa655], [50, 0xe8c832]]) {
+      spawnPedAt(g, car.x + dx, 222, g.rng.chance(0.5) ? Math.PI / 2 : -Math.PI / 2, shirt);
+    }
+    refreshHud(g);
   },
   // On foot on the beachfront strip: Marco walking east along the Ocean Drive
-  // road at dusk, the pastel hotel strip with neon on his left, palms and the
-  // sand and sea on his right, a lifeguard tower down the beach. The camera
-  // looks east-north-east so the strip fills the frame instead of empty sand.
+  // sidewalk at dusk, the pastel hotel strip with neon on his left, palms and
+  // the sand and sea on his right, a lifeguard tower down the beach. The
+  // camera looks east-north-east so the strip fills the frame instead of
+  // empty sand. This is the delivery walk (M1, second stage), so the HUD
+  // arrow and the pink minimap route give the walk a destination.
   // The road is cleared of parked cars first, so Marco never clips through one.
   street(g, input) {
     g.player.x = -70;
-    g.player.z = 231;
+    g.player.z = 222;
     g.player.heading = Math.PI / 2;
     g.cameraYaw = -1.5;
     clearRoute(g, true, 232, -80, 40);
-    const route = [{ x: 20, z: 229 }];
+    g.missions.start(0);
+    g.missions.stage = 1;
+    g.missions.placeBeacon();
+    g.hud.setObjective('Deliver the package to the Sunset Motel');
+    const route = [{ x: 20, z: 222 }];
     playForward(g, input, 4, () => walkPilot(g, route));
+    const p = g.player;
+    // Pedestrians sharing the sidewalk with Marco, ahead of him in the frame.
+    for (const [dx, dz, heading, shirt] of [
+      [8, -1, Math.PI / 2, 0xd94f30],
+      [18, 1, -Math.PI / 2, 0x3a7bd5],
+      [28, -1, Math.PI / 2, 0x3aa655],
+      [40, 0, -Math.PI / 2, 0xe8c832],
+      [52, 1, Math.PI / 2, 0x7a4fb5],
+    ]) {
+      spawnPedAt(g, p.x + dx, 222 + dz, heading, shirt);
+    }
+    // A parked car and a passing car on the road, on the right of the frame.
+    stageCar(g, p.x + 30, 235.2, -Math.PI / 2, 0x2e6fc2, 'parked', 0);
+    stageCar(g, p.x + 55, 228.8, Math.PI / 2, 0xe8c832, 'traffic', 9);
+    refreshHud(g);
   },
   // A mission in progress: the M3 cash-drop beacon ahead, Marco driving to it.
   mission(g, input) {
@@ -233,6 +313,16 @@ const SCENES = {
     clearRoute(g, false, -116, -20, 116);
     const route = [{ x: -116, z: 60 }];
     playForward(g, input, 5.5, () => drivePilot(g, route));
+    const car = g.player.car;
+    // Oncoming traffic in the far lane, past the beacon, for depth down the road.
+    for (const dz of [45, 70, 95]) {
+      stageCar(g, -119.2, car.z + dz, Math.PI, g.rng.pick([0x2e6fc2, 0xc23b2e, 0xe8e8e8]), 'traffic', 8);
+    }
+    // Pedestrians on the sidewalks flanking the street, near the drop.
+    spawnPedAt(g, -106.5, car.z + 12, 0, 0xd94f30);
+    spawnPedAt(g, -125.5, car.z + 25, Math.PI, 0x3aa655);
+    spawnPedAt(g, -106.5, car.z + 38, Math.PI / 2, 0xe8c832);
+    refreshHud(g);
   },
 };
 
