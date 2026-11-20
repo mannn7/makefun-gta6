@@ -9,7 +9,7 @@
 // update that runs them in order, the third-person camera, and save/load. The
 // renderer and the screens live in main.js; this file only knows the simulation.
 import * as THREE from 'three';
-import { CITY_HALF, CLOCK_RATE, CLOCK_START_MINUTES, PALETTE, SAVE_KEY, STEP } from './config.js';
+import { CITY_HALF, CLOCK_RATE, CLOCK_START_MINUTES, PALETTE, SAVE_KEY, SBPD_CALLSIGNS, STEP } from './config.js';
 import { createRandom } from './random.js';
 import { buildCity } from './city.js';
 import { createPlayerMesh, updatePlayerOnFoot } from './player.js';
@@ -21,6 +21,7 @@ import { enterCar, exitCar, nearestCar, spawnParkedCars, updatePlayerCar } from 
 import { spawnTraffic, updateTraffic } from './traffic.js';
 import { spawnPedestrians, updatePedestrians } from './pedestrians.js';
 import { spawnPickups, updateCombat } from './combat.js';
+import { createHeli, updateHeli } from './heli.js';
 import { updateHud } from './hud.js';
 import { drawMinimap } from './minimap.js';
 
@@ -91,7 +92,7 @@ export function createGame(seed) {
   const sun = new THREE.DirectionalLight(PALETTE.sun, 2.5);
   sun.position.set(280, 80, 140);
   scene.add(sun);
-  scene.add(new THREE.HemisphereLight(PALETTE.hemiSky, PALETTE.hemiGround, 1.35));
+  scene.add(new THREE.HemisphereLight(PALETTE.hemiSky, PALETTE.hemiGround, 1.55));
 
   const g = {
     seed,
@@ -165,6 +166,7 @@ export function createGame(seed) {
   g.audio = createAudio();
   g.hud = createHud();
   g.police = createPolice(g);
+  g.heli = createHeli(g);
   g.missions = createMissions(g);
   spawnParkedCars(g);
   spawnTraffic(g);
@@ -208,10 +210,13 @@ export function resetGame(g) {
   g.police.unseenTimer = 0;
   g.police.decayTimer = 0;
   g.police.bustedTimer = 0;
+  g.police.callsigns = [...SBPD_CALLSIGNS];
+  if (g.heli) g.heli.hide();
   g.missions.index = 0;
   g.missions.stage = 0;
   g.missions.active = false;
   g.missions.collected = 0;
+  g.missions.startedAt = 0;
   g.missions.beacon.visible = false;
   g.missions.target = null;
   spawnParkedCars(g);
@@ -245,6 +250,7 @@ export function updateGame(g, dt, input) {
   updateTraffic(g, dt);
   updatePedestrians(g, dt);
   updatePolice(g, dt);
+  updateHeli(g, dt);
   updateCombat(g, dt, input);
   updateMissions(g, dt);
   updateCamera(g, dt, input);

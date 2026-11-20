@@ -9,6 +9,10 @@
 // wanted level the HUD no longer showed), and the mission scene ends on a real
 // combat moment — Marco on foot, pistol drawn, firing at a cruiser blocking the
 // road to the cash drop, the beacon still glowing ahead.
+// R8 (Solara's dense HUD): the chase frame flies SBPD AIR-1 with its beam and
+// the dispatch board lists the staged cruisers by callsign; the mission frame
+// carries two stars so the board shows the blocking cruiser; every frame is
+// denser — more walkers on both sidewalks, more traffic ahead.
 // Screenshot scenes: each one plays the REAL game forward from a fresh world with
 // a fixed seed and a simple autopilot (waypoint driving, sidewalk walking), so the
 // frame is what a short game really looks like and the same seed always gives the
@@ -232,7 +236,14 @@ const SCENES = {
       cop.speed = playerCar.speed;
       cop.mesh.position.set(cop.x, 0, cop.z);
       cop.mesh.rotation.y = cop.heading;
+      g.police.tag(cop);
     });
+    // R8: SBPD AIR-1 hangs over the chase, up and to the left of the frame,
+    // its warm beam pooling on the road ahead of the red coupe — the dispatch
+    // board reads it as SKY EYE. Placed by hand: no simulation runs after
+    // this, so the bird sits exactly where the camera can see it. (Far enough
+    // ahead that it clears the top of the frame instead of clipping it.)
+    g.heli.place(playerCar.x - 20, playerCar.z + 38);
     // Oncoming traffic ahead, for depth: cars in the far lane coming toward
     // the chase, far enough ahead that they read as traffic, not a collision.
     for (const dz of [35, 60, 85]) {
@@ -242,6 +253,8 @@ const SCENES = {
     spawnPedAt(g, 9.5, playerCar.z + 8, Math.PI, 0xd94f30);
     spawnPedAt(g, -9.5, playerCar.z + 18, 0, 0x3aa655);
     spawnPedAt(g, 9.5, playerCar.z + 32, Math.PI / 2, 0xe8c832);
+    spawnPedAt(g, -9.5, playerCar.z + 42, Math.PI, 0x7a4fb5);
+    spawnPedAt(g, 9.5, playerCar.z + 52, 0, 0x3a7bd5);
     // Cinematic camera: low and close behind the player's car, the cruisers
     // flanking its tail in the centre of the frame, the road and the dusk
     // city ahead.
@@ -279,9 +292,14 @@ const SCENES = {
     stageCar(g, car.x + 45, 235.2, -Math.PI / 2, 0xe8c832, 'traffic', 8);
     stageCar(g, car.x + 80, 235.2, -Math.PI / 2, 0xc23b2e, 'traffic', 8);
     stageCar(g, car.x + 55, 228.8, Math.PI / 2, 0x3aa655, 'traffic', 10);
+    stageCar(g, car.x + 110, 235.2, -Math.PI / 2, 0x7a4fb5, 'traffic', 8);
     // Pedestrians on the hotel sidewalk, on the left of the frame.
-    for (const [dx, shirt] of [[5, 0xd94f30], [20, 0x3a7bd5], [35, 0x3aa655], [50, 0xe8c832]]) {
+    for (const [dx, shirt] of [[5, 0xd94f30], [20, 0x3a7bd5], [35, 0x3aa655], [50, 0xe8c832], [65, 0xd94f30], [80, 0x3aa655]]) {
       spawnPedAt(g, car.x + dx, 222, g.rng.chance(0.5) ? Math.PI / 2 : -Math.PI / 2, shirt);
+    }
+    // A few more walkers on the beach side, so both sidewalks read as alive.
+    for (const [dx, shirt] of [[15, 0xe87a2e], [45, 0x7a4fb5], [70, 0x2e6fc2]]) {
+      spawnPedAt(g, car.x + dx, 244, g.rng.chance(0.5) ? Math.PI / 2 : -Math.PI / 2, shirt);
     }
     refreshHud(g);
   },
@@ -312,12 +330,19 @@ const SCENES = {
       [28, -1, Math.PI / 2, 0x3aa655],
       [40, 0, -Math.PI / 2, 0xe8c832],
       [52, 1, Math.PI / 2, 0x7a4fb5],
+      [62, -1, -Math.PI / 2, 0xe87a2e],
+      [74, 0, Math.PI / 2, 0x2e6fc2],
     ]) {
       spawnPedAt(g, p.x + dx, 222 + dz, heading, shirt);
+    }
+    // Walkers on the sand side too, heading for the water at dusk.
+    for (const [dx, shirt] of [[14, 0x3aa655], [34, 0xd94f30], [58, 0x3a7bd5]]) {
+      spawnPedAt(g, p.x + dx, 246, g.rng.chance(0.5) ? Math.PI / 2 : -Math.PI / 2, shirt);
     }
     // A parked car and a passing car on the road, on the right of the frame.
     stageCar(g, p.x + 30, 235.2, -Math.PI / 2, 0x2e6fc2, 'parked', 0);
     stageCar(g, p.x + 55, 228.8, Math.PI / 2, 0xe8c832, 'traffic', 9);
+    stageCar(g, p.x + 85, 235.2, -Math.PI / 2, 0xc23b2e, 'traffic', 9);
     refreshHud(g);
   },
   // A mission in progress, ending on combat: the M3 cash-drop beacon ahead,
@@ -348,6 +373,14 @@ const SCENES = {
     // only drives 'traffic' cars, and it is not in the police chase list.
     const cruiser = makeCar(g, p.x, p.z + 14, Math.PI, 0x1d3fae, 'police');
     cruiser.speed = 0;
+    // R8: the cruiser called it in — two stars, and the cruiser joins the
+    // dispatch board with its real callsign and live distance, so the combat
+    // frame shows the SBPD board too. (Set by hand after the last simulation
+    // step: no police spawn or chase runs after this point.)
+    g.wanted = 2;
+    g.hud.setWanted(2);
+    g.police.tag(cruiser);
+    g.police.cars.push(cruiser);
     // Oncoming traffic in the far lane, past the beacon, for depth down the road.
     for (const dz of [45, 70, 95]) {
       stageCar(g, -119.2, car.z + dz, Math.PI, g.rng.pick([0x2e6fc2, 0xc23b2e, 0xe8e8e8]), 'traffic', 8);

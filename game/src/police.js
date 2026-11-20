@@ -5,7 +5,7 @@
 // hits a pedestrian or shoots; police cars spawn to match the level and chase the
 // player down, ramming the car or cornering the player on foot. Out of sight long
 // enough, the heat fades one star at a time.
-import { CITY_HALF, MAX_WANTED, PITCH } from './config.js';
+import { CITY_HALF, MAX_WANTED, PITCH, SBPD_CALLSIGNS } from './config.js';
 import { collideCar, makeCar } from './vehicles.js';
 import { randomStreetPoint } from './city.js';
 
@@ -22,6 +22,13 @@ export function createPolice(g) {
     bustedTimer: 0,
     sirenOn: false,
     searching: false, // wanted, but no cruiser in sight: the map tints red-pink
+    callsigns: [...SBPD_CALLSIGNS],
+    /** Give a cruiser the next free beach-patrol callsign (staged scenes call
+     * this too, so every unit on the dispatch board has a real name). */
+    tag(car) {
+      if (!car.callsign) car.callsign = police.callsigns.shift() || 'SBPD';
+      return car.callsign;
+    },
     addWanted(n, reason) {
       if (g.wanted >= MAX_WANTED) return;
       g.wanted = Math.min(MAX_WANTED, g.wanted + n);
@@ -55,6 +62,7 @@ function spawnPoliceCar(g) {
   const car = makeCar(g, x, z, 0, 0x1d3fae, 'police');
   car.speed = 0;
   car.cruise = 28;
+  g.police.tag(car);
   g.police.cars.push(car);
   return car;
 }

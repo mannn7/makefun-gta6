@@ -45,6 +45,7 @@ export function createMissions(g) {
     stage: 0,
     active: false,
     collected: 0,
+    startedAt: 0, // game time when the current job started (the job-card timer)
     beacon,
     target: null,
     objective: 'Talk to Rosa to start your first job.',
@@ -55,11 +56,23 @@ export function createMissions(g) {
       if (!stage) return null;
       return stage.pos;
     },
+    /** How many stages the current job has (the job card's dots). */
+    stageCount() {
+      return missionStages(g, missions.index).length;
+    },
+    /** What comes after the current stage (the job card's NEXT line). */
+    nextText() {
+      if (!missions.active) return '';
+      const stages = missionStages(g, missions.index);
+      const next = stages[missions.stage + 1];
+      return next ? next.text : 'Report back to Rosa';
+    },
     start(index) {
       missions.index = index;
       missions.stage = 0;
       missions.collected = 0;
       missions.active = true;
+      missions.startedAt = g.time;
       const def = MISSIONS[index];
       g.hud.feed(`Mission: ${def.title} — ${def.brief}`);
       g.hud.setObjective(missions.objectiveText());

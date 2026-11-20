@@ -213,6 +213,43 @@ export function buildCity(scene, rng) {
     scene.add(sub);
   }
 
+  // Shop signs: the beach strip's own names, painted in neon on canvas
+  // textures and hung on the street-facing walls — Café Sol, Neon Tide, Palm
+  // Court, Surf Shack, Taco Marina, Sunset Motel. The strip reads as a real
+  // row of businesses, not blank pastel boxes.
+  const shopNames = ['CAFÉ SOL', 'NEON TIDE', 'PALM COURT', 'SURF SHACK', 'TACO MARINA', 'SUNSET MOTEL'];
+  const shopColors = ['#ff2e88', '#00e5ff', '#ffe600', '#ff6b35', '#7c5cff', '#2dd4bf'];
+  const beachRow = placements.filter((p) => p.h <= 16).sort((a, b) => a.x - b.x);
+  beachRow.slice(0, shopNames.length).forEach((p, i) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 128;
+    const c2 = canvas.getContext('2d');
+    c2.clearRect(0, 0, 512, 128);
+    c2.font = '800 58px system-ui, sans-serif';
+    c2.textAlign = 'center';
+    c2.textBaseline = 'middle';
+    c2.shadowColor = shopColors[i];
+    c2.shadowBlur = 22;
+    c2.fillStyle = shopColors[i];
+    c2.fillText(shopNames[i], 256, 66);
+    c2.shadowBlur = 0;
+    c2.fillStyle = '#ffffff';
+    c2.fillText(shopNames[i], 256, 66);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    // A blade sign: it stands out from the facade, face turned down the
+    // street, so a camera driving or walking east reads the name head-on
+    // instead of seeing a flat board edge-on.
+    const sign = new THREE.Mesh(
+      new THREE.PlaneGeometry(9, 2.25),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide }),
+    );
+    sign.rotation.y = Math.PI / 2;
+    sign.position.set(p.x, p.h * 0.52, p.z + p.d / 2 + 4.85);
+    scene.add(sign);
+  });
+
   // Lifeguard towers on the sand, so the beach reads as a beach.
   const towerWhite = new THREE.MeshLambertMaterial({ color: 0xf2ead8 });
   const towerRed = new THREE.MeshLambertMaterial({ color: 0xd94f30 });

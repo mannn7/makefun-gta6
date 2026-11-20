@@ -62,29 +62,74 @@ export const PALETTE = {
 };
 
 // The four story missions, in order. Rewards are paid in cash on completion.
+// Each job carries Rosa's own words for it — what she says when the job starts,
+// shown in the dialogue card while the job runs.
 export const MISSIONS = [
   {
     id: 'first-job',
     title: 'M1 · First Job',
     brief: 'Rosa needs a package picked up from the pier and delivered to the Sunset Motel.',
     reward: 500,
+    rosa: 'Pier’s quiet tonight, Marco. Grab the package, keep it clean, bring it to the Sunset Motel.',
   },
   {
     id: 'getaway',
     title: 'M2 · Getaway',
     brief: 'Steal the red coupe by the marina. The cops will not like it — lose them at the safehouse.',
     reward: 800,
+    rosa: 'That red coupe by the marina is ours. Take it — and shake the SBPD before you reach the safehouse.',
   },
   {
     id: 'collection',
     title: 'M3 · Collection',
     brief: 'Three cash drops are waiting around Solara Bay. Pick them all up.',
     reward: 1200,
+    rosa: 'Three drops, three corners of the bay. The gold is already waiting, Marco. Move.',
   },
   {
     id: 'big-score',
     title: 'M4 · The Big Score',
     brief: 'Deliver the gold coupe to the garage on Marina Row. The whole force is on you. Do not stop.',
     reward: 2500,
+    rosa: 'The whole bay is watching this one. Garage on Marina Row. Don’t stop for anyone.',
   },
 ];
+
+// Solara Bay's own radio: one station, four songs of its own. The song playing
+// follows the job in progress, so the radio line always matches the moment.
+export const RADIO_STATION = 'SOLARA FM 98.6';
+export const RADIO_SONGS = [
+  'Neon Tide — The Breakwater',
+  'Golden Hour — Marina Lights',
+  'Palms at Dusk — Café Sol',
+  'Salt Air — The Undertow',
+];
+
+// The SBPD's beach-patrol callsigns — gulls, piers and tides, not numbers on a
+// list. Cruisers take the next free callsign when they roll out.
+export const SBPD_CALLSIGNS = ['SOL-12', 'GULL-07', 'PIER-03', 'TIDE-21', 'DUNE-09', 'SHELL-15', 'CORAL-04', 'PALM-02'];
+
+// Car names by paint, so the plate under the speedo names the car you stole.
+export const CAR_NAMES = {
+  0xc23b2e: 'CORAL GT',
+  0xe8c832: 'AURELIA GT',
+  0x2e6fc2: 'TIDE RUNNER',
+  0x3aa655: 'PALM CRUISER',
+  0xe8e8e8: 'SAND DUNE',
+  0x22262b: 'NIGHT TIDE',
+  0x7a4fb5: 'DUSKLINE',
+  0xe87a2e: 'SUNSET GT',
+};
+
+// Solara Bay's districts, by where you stand: the plaza, the pier, the marina
+// row, the north harbour, and the beach strip everyone calls Ocean Drive.
+export function districtAt(x, z) {
+  if (z > BEACH_Z - 40) return 'OCEAN DRIVE';
+  if (x < -100) return 'PIER DISTRICT';
+  if (x > 100) return 'MARINA ROW';
+  if (z < -100) return 'NORTH HARBOUR';
+  return 'SOLARA PLAZA';
+}
+
+// Respect ranks: what the bay calls you, by how many jobs you finished.
+export const RESPECT_RANKS = ['NEWCOMER', 'DRIVER', 'FIXER', 'BAY LEGEND'];
